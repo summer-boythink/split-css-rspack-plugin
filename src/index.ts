@@ -11,7 +11,7 @@ import { splitCssFile } from "./split";
 const PLUGIN_NAME = "SplitCssPlugin";
 
 interface Option {
-  cssNum: number;
+  cssFileNum: number;
   //todo '[name]-[part].[ext]'
   filename?: string;
 }
@@ -21,7 +21,7 @@ export class SplitCssPlugin implements RspackPluginInstance {
   allCssFileNames: string[];
   constructor(options: Option) {
     this.options = {
-      cssNum: options.cssNum ?? 5,
+      cssFileNum: options.cssFileNum ?? 5,
     };
     this.allCssFileNames = [];
   }
@@ -37,14 +37,13 @@ export class SplitCssPlugin implements RspackPluginInstance {
             if (path.extname(asset) === ".css") {
               const cssContent = assets[asset].source();
               this.allCssFileNames.push(asset);
-              console.log(asset);
             }
           });
         },
       );
     });
 
-    compiler.hooks.afterDone.tap(PLUGIN_NAME, (compilation) => {
+    compiler.hooks.afterEmit.tap(PLUGIN_NAME, (compilation) => {
       const outputPath = compiler.options.output.path!;
       const AllHtmlFiles = glob.sync(path.join(outputPath, "**/*.html"));
       let cssMap = new Map();
@@ -52,7 +51,7 @@ export class SplitCssPlugin implements RspackPluginInstance {
         let AllChunksName = splitCssFile(
           path.join(outputPath, cssName),
           path.join(outputPath, "/static/css"),
-          this.options.cssNum,
+          this.options.cssFileNum,
         );
         cssMap.set(cssName, AllChunksName);
       });
@@ -63,23 +62,20 @@ export class SplitCssPlugin implements RspackPluginInstance {
       // })
       AllHtmlFiles.forEach((file) => {
         const html = fs.readFileSync(file, "utf-8");
-        console.log(html);
 
         const dom = new JSDOM(html);
         const document = dom.window.document;
 
-        // 删除原有的CSS文件引用
+        // remove old css link
         const links = document.querySelectorAll('link[rel="stylesheet"]');
         links.forEach((link) => {
           const href = link.getAttribute("href");
-          console.log(href);
-
           if (cssMap.has(path.basename(href!))) {
             link.parentNode!.removeChild(link);
           }
         });
 
-        // 添加新的CSS文件引用
+        // add new css link
         cssMap.forEach((newCssFiles, oldCssFile) => {
           newCssFiles.forEach((newCssFile: string) => {
             const link = document.createElement("link");
@@ -89,7 +85,6 @@ export class SplitCssPlugin implements RspackPluginInstance {
           });
         });
 
-        // 将修改后的HTML写回文件
         fs.writeFileSync(file, dom.serialize());
       });
     });
