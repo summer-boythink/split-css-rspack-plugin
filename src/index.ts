@@ -1,92 +1,97 @@
 import type { Compiler, RspackPluginInstance } from "@rspack/core";
 import path from "path";
 import _ from "lodash";
-import HtmlWebpackPlugin from "html-webpack-plugin";
-const cssSplit = require("@pustelto/css-split");
-const PLUGIN_NAME = "SplitCssPlugin";
 import glob from "glob";
 import fs from "fs";
+import url from "url";
 import { PurgeCSS } from "purgecss";
+import { JSDOM } from "jsdom";
+import { splitCssFile } from "./split";
+
+const PLUGIN_NAME = "SplitCssPlugin";
 
 interface Option {
-  cssnum?: number;
+  cssNum: number;
+  //todo '[name]-[part].[ext]'
+  filename?: string;
 }
 
 export class SplitCssPlugin implements RspackPluginInstance {
   options: Option;
+  allCssFileNames: string[];
   constructor(options: Option) {
-    this.options = options;
+    this.options = {
+      cssNum: options.cssNum ?? 5,
+    };
+    this.allCssFileNames = [];
   }
 
   apply(compiler: Compiler) {
     compiler.hooks.compilation.tap(PLUGIN_NAME, (compilation) => {
-      compilation.hooks.processAssets.tapAsync(
+      compilation.hooks.afterProcessAssets.tap(
         {
           name: PLUGIN_NAME,
         },
-        (assets, callback) => {
+        (assets) => {
           Object.keys(assets).forEach((asset) => {
             if (path.extname(asset) === ".css") {
               const cssContent = assets[asset].source();
+              this.allCssFileNames.push(asset);
               console.log(asset);
-              // console.log(content);
-
-              const referencingFiles = Object.keys(assets).filter(
-                (otherAsset) => {
-                  // console.log(otherAsset);
-
-                  const otherContent = assets[otherAsset].source();
-                  return otherContent.includes(asset);
-                },
-              );
-
-              console.log(`Files referencing ${asset}:`, referencingFiles);
-
-              // 根据用户输入的数量均匀地拆分这个CSS文件
-                const splitContents: string[] = this.splitContent(
-                  cssContent,
-                  this.options
-                );
-                console.log(`Split contents of ${asset}:`, splitContents);
-
-              //   // 更新引用了这个CSS文件的文件，让它们引用拆分后的CSS文件
-              //   referencingFiles.forEach((referencingFile) => {
-              //     let newContent = assets[referencingFile].source();
-              //     splitContents.forEach((splitContent, index) => {
-              //       const newAssetName = `${asset}-part${index}.css`;
-              //       assets[newAssetName] = {
-              //         source: () => splitContent,
-              //         size: () => splitContent.length,
-              //       };
-              //       newContent = newContent.replace(asset, newAssetName);
-              //     });
-              //     assets[referencingFile] = {
-              //       source: () => newContent,
-              //       size: () => newContent.length,
-              //     };
-              //   });
             }
           });
-          callback();
         },
       );
     });
 
-    compiler.hooks.afterDone.tap(PLUGIN_NAME,(compilation) => {
-          const outputPath = compiler.options.output.path;
-          const AllHtmlFiles = glob.sync(path.join(outputPath!, "**/*.html"));
-          console.log(AllHtmlFiles);
-          AllHtmlFiles.forEach((file) => {
-            // 读取文件内容
-            const content = fs.readFileSync(file, "utf8");
+    compiler.hooks.afterDone.tap(PLUGIN_NAME, (compilation) => {
+      const outputPath = compiler.options.output.path!;
+      const AllHtmlFiles = glob.sync(path.join(outputPath, "**/*.html"));
+      let cssMap = new Map();
+      this.allCssFileNames.forEach((cssName) => {
+        let AllChunksName = splitCssFile(
+          path.join(outputPath, cssName),
+          path.join(outputPath, "/static/css"),
+          this.options.cssNum,
+        );
+        cssMap.set(cssName, AllChunksName);
+      });
 
-            
+      // todo: rm source css
+      // this.allCssFileNames.forEach((cssName) => {
+      //   fs.unlinkSync(path.join(outputPath,cssName))
+      // })
+      AllHtmlFiles.forEach((file) => {
+        const html = fs.readFileSync(file, "utf-8");
+        console.log(html);
+
+        const dom = new JSDOM(html);
+        const document = dom.window.document;
+
+        // 删除原有的CSS文件引用
+        const links = document.querySelectorAll('link[rel="stylesheet"]');
+        links.forEach((link) => {
+          const href = link.getAttribute("href");
+          console.log(href);
+
+          if (cssMap.has(path.basename(href!))) {
+            link.parentNode!.removeChild(link);
+          }
+        });
+
+        // 添加新的CSS文件引用
+        cssMap.forEach((newCssFiles, oldCssFile) => {
+          newCssFiles.forEach((newCssFile: string) => {
+            const link = document.createElement("link");
+            link.rel = "stylesheet";
+            link.href = path.join("static", "css", path.basename(newCssFile));
+            document.head.appendChild(link);
           });
-    })
-  }
+        });
 
-  splitContent(content: string, option: Option): string[] {
-    //todo
-    return []
+        // 将修改后的HTML写回文件
+        fs.writeFileSync(file, dom.serialize());
+      });
+    });
   }
 }
