@@ -1,0 +1,40 @@
+{
+  "name": "split-css-rspack-plugin",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "a plugin for split css",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "format": "prettier --write --cache .",
+    "test": "vitest",
+    "build": "rimraf dist && tsc",
+    "dev": "rimraf dist && tsc -w"
+  },
+  "keywords": [
+    "rspack",
+    "plugin",
+    "css"
+  ],
+  "author": "summer-boythink",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/lodash": "^4.14.202",
+    "@types/node": "^20.10.0",
+    "html-webpack-plugin": "^5.6.0",
+    "prettier": "^3.1.0",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.3.2",
+    "vitest": "^0.34.6"
+  },
+  "dependencies": {
+    "@pustelto/css-split": "^0.1.1",
+    "@rspack/core": "^0.5.4",
+    "glob": "7.1.6",
+    "jsdom": "16.2.2",
+    "lodash": "^4.17.21",
+    "purgecss": "2.3.0"
+  }
+}
