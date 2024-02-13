@@ -1,8 +1,9 @@
 {
   "name": "split-css-rspack-plugin",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "main": "./dist/index.js",
+  "types": "dist/index.d.ts",
   "description": "a plugin for split css",
   "engines": {
     "node": ">=20.0.0"

@@ -1,6 +1,7 @@
 # split-css-rspack-plugin
 
 ## Install
+
 ```
 npm i --save-dev split-css-rspack-plugin
 ```
@@ -13,20 +14,18 @@ npm i --save-dev split-css-rspack-plugin
 - [ ] Use purgecss clean css
 
 ## Usage
+
 ```ts
-import { defineConfig } from '@rsbuild/core';
-import { pluginReact } from '@rsbuild/plugin-react';
-import {SplitCssPlugin} from "split-css-rspack-plugin"
+import { defineConfig } from "@rsbuild/core";
+import { pluginReact } from "@rsbuild/plugin-react";
+import { SplitCssPlugin } from "split-css-rspack-plugin";
 
 export default defineConfig({
   plugins: [pluginReact()],
-  tools: { 
+  tools: {
     rspack: {
-      plugins: [
-        new SplitCssPlugin({cssFileNum:5}),
-      ]
-    }
-  }
+      plugins: [new SplitCssPlugin({ cssFileNum: 5 })],
+    },
+  },
 });
-
 ```
